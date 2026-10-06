@@ -1,0 +1,108 @@
+services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL 16 with pgvector Extension
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: simple_ai_postgres_prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Database password required}
+      POSTGRES_DB: ${POSTGRES_DB:-simple_ai_prod}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgvector_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-simple_ai_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+    networks:
+      - simple_ai_network
+
+  # ----------------------------------------------------------------------------
+  # 2. FastAPI Knowledge & Vector Backend
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: simple_ai_backend_prod
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      DEBUG: "False"
+      PORT: "8000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-simple_ai_prod}
+      VECTOR_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-simple_ai_prod}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?Gemini API key is required}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT secret key is required}
+      HSTS_ENABLED: "True"
+      ENFORCE_HTTPS: ${ENFORCE_HTTPS:-True}
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/docs"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+    networks:
+      - simple_ai_network
+
+  # ----------------------------------------------------------------------------
+  # 3. Next.js Admin & Widget Host Frontend
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: simple_ai_frontend_prod
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      BACKEND_URL: http://backend:8000
+      NEXT_PUBLIC_APP_ENV: production
+      NEXT_PUBLIC_BACKEND_URL: ${PUBLIC_BACKEND_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1.5G
+    networks:
+      - simple_ai_network
+
+volumes:
+  pgvector_prod_data:
+    name: simple_ai_pgvector_prod_data
+
+networks:
+  simple_ai_network:
+    name: simple_ai_network
+    driver: bridge

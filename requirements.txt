@@ -15,6 +15,8 @@ attrs==26.1.0
     # via
     #   jsonschema
     #   referencing
+bcrypt==5.0.0
+    # via simple-ai (pyproject.toml)
 certifi==2026.7.22
     # via requests
 cffi==2.1.1
@@ -25,8 +27,14 @@ click==8.5.0
     # via uvicorn
 cryptography==50.0.1
     # via pyjwt
+dnspython==2.8.0
+    # via email-validator
+email-validator==2.3.0
+    # via simple-ai (pyproject.toml)
 fastapi==0.141.1
     # via simple-ai (pyproject.toml)
+greenlet==3.5.6
+    # via sqlalchemy
 griffelib==2.3.0
     # via openai-agents
 h11==0.16.0
@@ -42,6 +50,7 @@ httpx2==2.12.0
 idna==3.19
     # via
     #   anyio
+    #   email-validator
     #   httpx2
     #   requests
 jiter==0.16.0
@@ -60,6 +69,14 @@ openai-agents==0.22.2
     # via simple-ai (pyproject.toml)
 opentelemetry-api==1.44.0
     # via mcp
+pgvector==0.5.0
+    # via simple-ai (pyproject.toml)
+psycopg==3.3.6
+    # via simple-ai (pyproject.toml)
+psycopg-binary==3.3.6
+    # via psycopg
+psycopg-pool==3.3.3
+    # via simple-ai (pyproject.toml)
 pycparser==3.0
     # via cffi
 pydantic==2.13.5
@@ -73,6 +90,8 @@ pydantic-core==2.46.5
     # via pydantic
 pyjwt==2.13.0
     # via mcp
+pypdf==6.19.0
+    # via simple-ai (pyproject.toml)
 python-dotenv==1.2.3
     # via simple-ai (pyproject.toml)
 python-multipart==0.0.32
@@ -89,6 +108,8 @@ rpds-py==2026.6.3
     #   referencing
 sniffio==1.3.1
     # via openai
+sqlalchemy==2.1.3
+    # via simple-ai (pyproject.toml)
 sse-starlette==3.4.11
     # via mcp
 starlette==1.6.0
@@ -110,9 +131,12 @@ typing-extensions==4.16.0
     #   openai
     #   openai-agents
     #   opentelemetry-api
+    #   psycopg
+    #   psycopg-pool
     #   pydantic
     #   pydantic-core
     #   referencing
+    #   sqlalchemy
     #   starlette
     #   typing-inspection
 typing-inspection==0.4.4

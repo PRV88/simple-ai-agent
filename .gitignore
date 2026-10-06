@@ -1,12 +1,72 @@
-# Python-generated files
+# ==============================================================================
+# Git Ignore Configuration - Simple AI
+# ==============================================================================
+
+# Environment variable files (Strictly ignore secrets)
+.env
+.env.*
+!.env.example
+*.env.local
+
+# Python artifacts
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
+*.so
 build/
 dist/
 wheels/
-*.egg-info
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
 
 # Virtual environments
-.venv
-.env
+.venv/
+venv/
+ENV/
+env/
+
+# Node & Next.js Frontend
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+frontend/out/
+*.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
+.turbo/
+frontend/.turbo/
+
+# Logs & Temporary files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Operating System & IDEs
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Cloud & deployment
+.vercel/
+.serverless/
 .vercel
+.env*

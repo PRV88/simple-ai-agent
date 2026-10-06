@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Customer Demo Website - Simple AI Widget Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    header {
+      background: #ffffff;
+      padding: 24px 40px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border: 1px solid #e2e8f0;
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 28px;
+    }
+    p {
+      color: #64748b;
+      line-height: 1.6;
+    }
+    .badge {
+      display: inline-block;
+      background: #e0f2fe;
+      color: #0284c7;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .code-box {
+      background: #0f172a;
+      color: #38bdf8;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">Acme Corp Documentation & Support</div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <span class="badge">Live Third-Party Website Simulation</span>
+      <h1>Welcome to Acme Cloud Portal</h1>
+      <p>
+        This external webpage demonstrates the <strong>Simple AI Universal ChatWidget</strong>. 
+        Notice the floating chat launcher button in the bottom right corner.
+      </p>
+      <p>
+        Click on the launcher button to open the widget. The widget dynamically pulls the agent's title, 
+        brand color, welcome message, and starter prompts, and executes RAG queries directly against 
+        the admin's uploaded pgvector documents using SSE streaming.
+      </p>
+
+      <div class="code-box">
+&lt;!-- Simple AI Embed Script --&gt;
+&lt;script
+  src="/widget/chat-widget.js"
+  data-agent-id="AGENT_ID_PLACEHOLDER"
+  data-api-base="http://localhost:8000"
+  data-position="bottom-right"
+  defer&gt;
+&lt;/script&gt;
+      </div>
+    </div>
+  </div>
+
+  <!-- Dynamic loader for demo -->
+  <script>
+    // Grab agent_id from URL query params or fallback
+    const urlParams = new URLSearchParams(window.location.search);
+    const agentId = urlParams.get('agent_id') || 'default';
+    
+    // Dynamically inject widget script
+    const widgetScript = document.createElement('script');
+    widgetScript.src = '/widget/chat-widget.js';
+    widgetScript.setAttribute('data-agent-id', agentId);
+    widgetScript.setAttribute('data-api-base', window.location.origin);
+    widgetScript.setAttribute('data-position', 'bottom-right');
+    widgetScript.defer = true;
+    document.body.appendChild(widgetScript);
+  </script>
+</body>
+</html>

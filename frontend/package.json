@@ -1,0 +1,37 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "dotenv -e .env.development -- next dev",
+    "dev:stage": "dotenv -e .env.staging -- next dev -p 3001",
+    "dev:prod": "dotenv -e .env.production -- next dev -p 3000",
+    "build": "dotenv -e .env.production -- next build",
+    "build:dev": "dotenv -e .env.development -- next build",
+    "build:stage": "dotenv -e .env.staging -- next build",
+    "build:prod": "dotenv -e .env.production -- next build",
+    "start": "dotenv -e .env.production -- next start",
+    "start:stage": "dotenv -e .env.staging -- next start -p 3001",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@ai-sdk/react": "^4.0.131",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^9.4.0",
+    "@mui/material": "^9.4.0",
+    "ai": "^7.0.128",
+    "next": "16.3.8",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.8",
+    "typescript": "^5"
+  }
+}

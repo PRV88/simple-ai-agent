@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  postgres-stage:
+    image: pgvector/pgvector:pg16
+    container_name: simple_ai_pgvector_stage
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: simple_ai_stage
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgvector_stage_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d simple_ai_stage"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgvector_stage_data:
