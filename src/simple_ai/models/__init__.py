@@ -27,6 +27,9 @@ from simple_ai.models.schemas import (
     WidgetChatRequest,
     TokenUsageSummaryResponse,
     TokenUsageRecordResponse,
+    RagasTestCase,
+    RagasEvaluateRequest,
+    RagasEvaluateResponse,
 )
 
 __all__ = [
@@ -58,4 +61,8 @@ __all__ = [
     "WidgetChatRequest",
     "TokenUsageSummaryResponse",
     "TokenUsageRecordResponse",
+    "RagasTestCase",
+    "RagasEvaluateRequest",
+    "RagasEvaluateResponse",
 ]
+

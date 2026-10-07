@@ -212,3 +212,23 @@ class TokenUsageSummaryResponse(BaseModel):
     budget_used_percentage: float
     recent_records: List[TokenUsageRecordResponse] = []
 
+
+# ==========================================
+# Ragas Evaluation Schemas
+# ==========================================
+
+class RagasTestCase(BaseModel):
+    question: str
+    ground_truth: Optional[str] = None
+
+
+class RagasEvaluateRequest(BaseModel):
+    test_cases: Optional[List[RagasTestCase]] = None
+
+
+class RagasEvaluateResponse(BaseModel):
+    total_samples: int
+    summary_scores: Dict[str, float]
+    breakdown: List[Dict[str, Any]] = []
+
+

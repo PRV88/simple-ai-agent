@@ -14,6 +14,8 @@ from simple_ai.models import (
     IngestTextRequest,
     IngestionResponse,
     QueryRequest,
+    RagasEvaluateRequest,
+    RagasEvaluateResponse,
     TokenUsageSummaryResponse,
     VectorSearchResult,
 )
@@ -25,6 +27,7 @@ from simple_ai.repositories.vector_repository import vector_repository
 from simple_ai.services.auth_service import get_current_admin
 from simple_ai.services.et_service import et_service
 from simple_ai.services.rag_service import rag_service
+from simple_ai.services.ragas_service import ragas_service
 
 logger = logging.getLogger("simple_ai.controllers.admin")
 
@@ -244,3 +247,46 @@ async def get_token_usage_summary(current_admin: Dict[str, Any] = Depends(get_cu
         agent_id=current_agent["id"],
         monthly_budget=current_agent.get("monthly_token_budget", 1000000),
     )
+
+
+@router.post(
+    "/evaluation/ragas",
+    response_model=RagasEvaluateResponse,
+    summary="Evaluate RAG pipeline using Ragas framework (Faithfulness, Relevancy, Precision, Recall)",
+)
+async def evaluate_rag_pipeline(
+    request: Optional[RagasEvaluateRequest] = None,
+    current_admin: Dict[str, Any] = Depends(get_current_admin),
+):
+    """Controller: Runs Ragas evaluation on the current admin's Agent and ingested knowledge."""
+    current_agent = await agent_repository.get_or_create_for_user(
+        user_id=current_admin["id"], username=current_admin["username"]
+    )
+
+    test_cases_data = []
+    if request and request.test_cases:
+        test_cases_data = [tc.model_dump() for tc in request.test_cases]
+    else:
+        docs = await document_repository.list_documents(user_id=current_admin["id"])
+        filenames = [d["filename"] for d in docs] if docs else []
+        test_cases_data = [
+            {
+                "question": f"What information is contained in {filenames[0]}?" if filenames else "What services and knowledge are available in the system?",
+                "ground_truth": "Enterprise knowledge and documentation."
+            },
+            {
+                "question": "Can you summarize the primary technical and operational capabilities described in your documents?",
+                "ground_truth": "System architecture, services, and operational specifications."
+            }
+        ]
+
+    eval_result = await ragas_service.evaluate_live_pipeline(
+        test_cases=test_cases_data,
+        user_id=current_admin["id"],
+        agent_id=current_agent["id"],
+        system_prompt=current_agent.get("system_prompt"),
+        guardrails=current_agent.get("guardrails"),
+        model_name=current_agent.get("model_name", "gemini-2.5-flash"),
+    )
+    return eval_result
+

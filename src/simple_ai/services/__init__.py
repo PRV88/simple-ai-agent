@@ -6,6 +6,7 @@ from simple_ai.services.auth_service import (
 )
 from simple_ai.services.et_service import ETService, et_service
 from simple_ai.services.rag_service import RAGService, rag_service
+from simple_ai.services.ragas_service import RagasService, ragas_service
 
 __all__ = [
     "AuthService",
@@ -16,4 +17,7 @@ __all__ = [
     "et_service",
     "RAGService",
     "rag_service",
+    "RagasService",
+    "ragas_service",
 ]
+
