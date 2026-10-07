@@ -48,9 +48,18 @@ class AgentRepository:
             return agent.to_dict()
 
     async def get_by_id(self, agent_id: str) -> Optional[Dict[str, Any]]:
-        """Fetches agent by primary key ID."""
+        """Fetches agent by primary key ID, with fallback for default/demo placeholders."""
         async with get_db() as session:
             agent = await session.get(AgentModel, agent_id)
+            if not agent and agent_id in ("default", "YOUR_AGENT_ID", "default_agent", "demo"):
+                stmt = (
+                    select(AgentModel)
+                    .where(AgentModel.is_deployed == True)
+                    .order_by(AgentModel.created_at.asc())
+                    .limit(1)
+                )
+                res = await session.execute(stmt)
+                agent = res.scalar_one_or_none()
             return agent.to_dict() if agent else None
 
     async def update_agent(

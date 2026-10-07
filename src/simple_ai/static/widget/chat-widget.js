@@ -815,10 +815,7 @@
     const trimmed = (text || "").trim();
     if (!trimmed || isLoading) return;
 
-    if (!agentId) {
-      alert("Simple AI Error: data-agent-id is missing from embed script.");
-      return;
-    }
+    const targetAgentId = agentId || config.agent_id || "default";
 
     chatInput.value = "";
     messages.push({ sender: "user", text: trimmed });
@@ -882,7 +879,7 @@
 
     try {
       const streamUrl =
-        `${apiBase}/widget/chat/stream?agent_id=${encodeURIComponent(agentId)}&query=${encodeURIComponent(trimmed)}` +
+        `${apiBase}/widget/chat/stream?agent_id=${encodeURIComponent(targetAgentId)}&query=${encodeURIComponent(trimmed)}` +
         (currentSessionId ? `&session_id=${encodeURIComponent(currentSessionId)}` : "");
 
       eventSource = new EventSource(streamUrl);
@@ -1009,14 +1006,10 @@
 
   // Load Remote Agent Configuration
   async function loadConfig() {
-    if (!agentId) {
-      console.warn("Simple AI Widget: No data-agent-id specified.");
-      resetConversation();
-      return;
-    }
+    const targetAgentId = agentId || "default";
 
     try {
-      const res = await fetch(`${apiBase}/widget/config?agent_id=${encodeURIComponent(agentId)}`);
+      const res = await fetch(`${apiBase}/widget/config?agent_id=${encodeURIComponent(targetAgentId)}`);
       if (res.ok) {
         const data = await res.json();
         config = {
@@ -1024,6 +1017,7 @@
           welcome_message: data.welcome_message || "Hello! How can I help you today?",
           brand_color: data.brand_color || "#1976d2",
           starter_prompts: Array.isArray(data.starter_prompts) ? data.starter_prompts : [],
+          agent_id: data.agent_id,
         };
 
         widgetTitle.textContent = config.title;
