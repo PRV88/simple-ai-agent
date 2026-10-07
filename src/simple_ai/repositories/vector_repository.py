@@ -63,7 +63,9 @@ class VectorRepository:
             )
 
             if user_id is not None:
-                stmt = stmt.where(DocumentModel.user_id == user_id)
+                stmt = stmt.where(
+                    (DocumentModel.user_id == user_id) | (DocumentModel.user_id.is_(None))
+                )
             elif uploaded_by:
                 stmt = stmt.where(DocumentModel.uploaded_by == uploaded_by)
 
@@ -93,7 +95,9 @@ class VectorRepository:
                 stmt = (
                     select(func.count(DocumentChunkModel.id))
                     .join(DocumentModel, DocumentChunkModel.doc_id == DocumentModel.id)
-                    .where(DocumentModel.user_id == user_id)
+                    .where(
+                        (DocumentModel.user_id == user_id) | (DocumentModel.user_id.is_(None))
+                    )
                 )
             else:
                 stmt = select(func.count(DocumentChunkModel.id))

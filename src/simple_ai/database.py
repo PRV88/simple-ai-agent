@@ -126,11 +126,31 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
         await conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS user_id INTEGER;"))
         await conn.execute(text("ALTER TABLE agents ADD COLUMN IF NOT EXISTS guardrails TEXT DEFAULT '';"))
+        # Backfill document user_id for any legacy unassigned documents
+        await conn.execute(text("""
+            UPDATE documents d
+            SET user_id = u.id
+            FROM users u
+            WHERE d.user_id IS NULL
+              AND (LOWER(d.uploaded_by) = LOWER(u.username) OR LOWER(d.uploaded_by) = LOWER(u.email));
+        """))
+        # Add index for fast multi-tenant document queries
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id);"))
 
     # If vector engine is on a separate database, ensure tables on vector database too
     if VECTOR_DATABASE_URL != DATABASE_URL:
         async with v_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+
+    # Ensure HNSW vector index exists for lightning fast similarity queries
+    async with v_engine.begin() as conn:
+        try:
+            await conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_chunks_embedding 
+                ON document_chunks USING hnsw (embedding vector_cosine_ops);
+            """))
+        except Exception as idx_err:
+            logger.warning(f"Note on HNSW index initialization: {idx_err}")
 
     logger.info("SQLAlchemy 2.0 ORM tables and pgvector indexes initialized successfully.")
 

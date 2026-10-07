@@ -395,22 +395,38 @@ export const ChatView: React.FC<ChatViewProps> = ({ token }) => {
                   </Typography>
                 </Box>
 
-                {/* Message Text */}
-                <Typography
-                  variant="body2"
-                  sx={{
-                    whiteSpace: "pre-wrap",
-                    lineHeight: 1.6,
-                    fontSize: "0.92rem",
-                    color: isAgent
-                      ? (theme) =>
-                          theme.palette.mode === "light" ? "#0f172a" : "#f8fafc"
-                      : "#ffffff",
-                  }}
-                >
-                  {msg.text}
-                  {isCurrentStreaming && <span className="ai-typing-cursor" />}
-                </Typography>
+                {/* Message Text or Thinking State */}
+                {isCurrentStreaming && !msg.text ? (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 0.5 }}>
+                    <CircularProgress size={16} thickness={5} color="primary" />
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontStyle: "italic",
+                        color: "text.secondary",
+                        fontSize: "0.88rem",
+                      }}
+                    >
+                      Searching knowledge base & reasoning...
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      whiteSpace: "pre-wrap",
+                      lineHeight: 1.6,
+                      fontSize: "0.92rem",
+                      color: isAgent
+                        ? (theme) =>
+                            theme.palette.mode === "light" ? "#0f172a" : "#f8fafc"
+                        : "#ffffff",
+                    }}
+                  >
+                    {msg.text}
+                    {isCurrentStreaming && <span className="ai-typing-cursor" />}
+                  </Typography>
+                )}
 
                 {/* Citations if available */}
                 {msg.citations && msg.citations.length > 0 && (

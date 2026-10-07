@@ -31,6 +31,7 @@ class RAGService:
         )
         self.vec_repo = vector_repository
         self.usage_repo = usage_repository
+        self._embedding_cache: Dict[str, List[float]] = {}
 
     async def retrieve_knowledge(
         self,
@@ -45,16 +46,26 @@ class RAGService:
         if not query_clean:
             return []
 
-        try:
-            resp = await self.embedding_client.embeddings.create(
-                model=EMBEDDING_MODEL,
-                input=[query_clean],
-                dimensions=EMBEDDING_DIM,
-            )
-            query_vec = resp.data[0].embedding
-        except Exception as e:
-            logger.error(f"Failed to embed query: {e}")
-            raise RuntimeError(f"Query embedding generation failed: {str(e)}")
+        # Check in-memory cache to save 300-800ms of embedding latency
+        cache_key = f"{EMBEDDING_MODEL}:{query_clean}"
+        if cache_key in self._embedding_cache:
+            query_vec = self._embedding_cache[cache_key]
+        else:
+            try:
+                resp = await self.embedding_client.embeddings.create(
+                    model=EMBEDDING_MODEL,
+                    input=[query_clean],
+                    dimensions=EMBEDDING_DIM,
+                )
+                query_vec = resp.data[0].embedding
+                # Keep cache bounded
+                if len(self._embedding_cache) > 1000:
+                    # Pop oldest item
+                    self._embedding_cache.pop(next(iter(self._embedding_cache)))
+                self._embedding_cache[cache_key] = query_vec
+            except Exception as e:
+                logger.error(f"Failed to embed query: {e}")
+                raise RuntimeError(f"Query embedding generation failed: {str(e)}")
 
         return await self.vec_repo.cosine_similarity_search(
             query_vec=query_vec,

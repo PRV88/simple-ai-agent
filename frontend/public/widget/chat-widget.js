@@ -313,27 +313,115 @@
       box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.05);
     }
 
-    /* Citations */
+    /* Citations / Grounded References */
     .citations-container {
-      margin-top: 6px;
+      margin-top: 8px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
       width: 100%;
     }
 
-    .citation-badge {
+    .citations-header {
       font-size: 11px;
-      font-weight: 500;
-      color: #475569;
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-      padding: 4px 9px;
-      border-radius: 6px;
-      display: inline-flex;
+      font-weight: 600;
+      color: #64748b;
+      display: flex;
       align-items: center;
       gap: 5px;
-      line-height: 1.3;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 2px;
+    }
+
+    .citation-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      overflow: hidden;
+      transition: all 0.15s ease;
+    }
+
+    .citation-card:hover {
+      border-color: #cbd5e1;
+      background: #f1f5f9;
+    }
+
+    .citation-card-header {
+      padding: 7px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-size: 11.5px;
+      color: #334155;
+      font-weight: 500;
+      user-select: none;
+    }
+
+    .citation-card-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .citation-card-left svg {
+      width: 13px;
+      height: 13px;
+      stroke: var(--brand-color, #4f46e5);
+      stroke-width: 2;
+      fill: none;
+      flex-shrink: 0;
+    }
+
+    .citation-source-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .citation-score-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: #e0e7ff;
+      color: #3730a3;
+      margin-left: 6px;
+      flex-shrink: 0;
+    }
+
+    .citation-toggle-icon {
+      font-size: 10px;
+      color: #94a3b8;
+      transition: transform 0.2s ease;
+      margin-left: 6px;
+      flex-shrink: 0;
+    }
+
+    .citation-card.expanded .citation-toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    .citation-card-body {
+      display: none;
+      padding: 8px 10px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #475569;
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .citation-card.expanded .citation-card-body {
+      display: block;
     }
 
     /* Starter Prompts - Modern Interactive Cards */
@@ -376,21 +464,30 @@
       opacity: 0.6;
     }
 
-    /* Typing indicator */
-    .typing-indicator {
+    /* Thinking / Searching Indicator (Non-empty dynamic state) */
+    .thinking-box {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 10px 14px;
+      gap: 8px;
+      padding: 9px 13px;
       background: #ffffff;
       border-radius: 14px;
-      border: 1px solid #edf2f7;
+      border: 1px solid #e2e8f0;
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .thinking-dots {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .typing-dot {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
       background: var(--brand-color, #4f46e5);
       animation: pulseDot 1.4s infinite ease-in-out both;
@@ -398,6 +495,7 @@
 
     .typing-dot:nth-child(1) { animation-delay: -0.32s; }
     .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    .typing-dot:nth-child(3) { animation-delay: 0s; }
 
     @keyframes pulseDot {
       0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
@@ -603,6 +701,35 @@
   launcherBtn.addEventListener("click", () => toggleWidget());
   closeBtn.addEventListener("click", () => toggleWidget(false));
 
+  // Create Citation Element with Expandable Excerpt
+  function createCitationElement(cit) {
+    const card = document.createElement("div");
+    card.className = "citation-card";
+
+    const header = document.createElement("div");
+    header.className = "citation-card-header";
+    header.innerHTML = `
+      <div class="citation-card-left">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        <span class="citation-source-name">${escapeHtml(cit.source || "Document Reference")}</span>
+        <span class="citation-score-badge">${Math.round((cit.similarity || 0) * 100)}% match</span>
+      </div>
+      <span class="citation-toggle-icon">▼</span>
+    `;
+
+    const body = document.createElement("div");
+    body.className = "citation-card-body";
+    body.textContent = cit.content_preview || "Relevant grounding passage retrieved from vector knowledge base.";
+
+    header.addEventListener("click", () => {
+      card.classList.toggle("expanded");
+    });
+
+    card.appendChild(header);
+    card.appendChild(body);
+    return card;
+  }
+
   // Render Messages
   function renderMessages() {
     messagesContainer.innerHTML = "";
@@ -620,13 +747,19 @@
       if (msg.citations && msg.citations.length > 0) {
         const citContainer = document.createElement("div");
         citContainer.className = "citations-container";
+
+        const citHeader = document.createElement("div");
+        citHeader.className = "citations-header";
+        citHeader.innerHTML = `
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"></path>
+          </svg>
+          <span>Grounded Sources (${msg.citations.length})</span>
+        `;
+        citContainer.appendChild(citHeader);
+
         msg.citations.forEach((cit) => {
-          const badge = document.createElement("div");
-          badge.className = "citation-badge";
-          badge.innerHTML = `📄 <strong>${escapeHtml(cit.source)}</strong> (${Math.round(
-            (cit.similarity || 0) * 100
-          )}% match)`;
-          citContainer.appendChild(badge);
+          citContainer.appendChild(createCitationElement(cit));
         });
         row.appendChild(citContainer);
       }
@@ -649,19 +782,6 @@
 
       messagesContainer.appendChild(row);
     });
-
-    if (isLoading) {
-      const indicator = document.createElement("div");
-      indicator.className = "message-row agent";
-      indicator.innerHTML = `
-        <div class="typing-indicator">
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-        </div>
-      `;
-      messagesContainer.appendChild(indicator);
-    }
 
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
@@ -690,7 +810,7 @@
 
   resetBtn.addEventListener("click", resetConversation);
 
-  // Two-Route Streaming Implementation
+  // Smooth Direct Streaming Implementation (No DOM thrashing, No empty bubbles)
   async function sendUserMessage(text) {
     const trimmed = (text || "").trim();
     if (!trimmed || isLoading) return;
@@ -705,9 +825,60 @@
     isLoading = true;
     renderMessages();
 
-    // Prepare placeholder agent message
-    const agentMsgIndex = messages.length;
-    messages.push({ sender: "agent", text: "", citations: [] });
+    // Create Dedicated Streaming Elements in DOM
+    const streamingRow = document.createElement("div");
+    streamingRow.className = "message-row agent";
+
+    const thinkingBox = document.createElement("div");
+    thinkingBox.className = "thinking-box";
+    thinkingBox.innerHTML = `
+      <div class="thinking-dots">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+      <span>Searching knowledge & reasoning...</span>
+    `;
+    streamingRow.appendChild(thinkingBox);
+
+    const streamingBubble = document.createElement("div");
+    streamingBubble.className = "message-bubble";
+    streamingBubble.style.display = "none";
+    streamingRow.appendChild(streamingBubble);
+
+    const citationsContainer = document.createElement("div");
+    citationsContainer.className = "citations-container";
+    citationsContainer.style.display = "none";
+    streamingRow.appendChild(citationsContainer);
+
+    messagesContainer.appendChild(streamingRow);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    let activeText = "";
+    let activeCitations = [];
+    let isCommitted = false;
+
+    function renderActiveCitations(citations) {
+      if (!Array.isArray(citations) || citations.length === 0) return;
+      activeCitations = citations;
+      citationsContainer.innerHTML = "";
+
+      const citHeader = document.createElement("div");
+      citHeader.className = "citations-header";
+      citHeader.innerHTML = `
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"></path>
+        </svg>
+        <span>Grounded Sources (${citations.length})</span>
+      `;
+      citationsContainer.appendChild(citHeader);
+
+      citations.forEach((cit) => {
+        citationsContainer.appendChild(createCitationElement(cit));
+      });
+      citationsContainer.style.display = "flex";
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
 
     try {
       const streamUrl =
@@ -719,29 +890,62 @@
       eventSource.onmessage = function (event) {
         const raw = event.data;
         if (raw === "[DONE]") {
-          eventSource.close();
-          eventSource = null;
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          if (!isCommitted && activeText) {
+            isCommitted = true;
+            messages.push({
+              sender: "agent",
+              text: activeText,
+              citations: activeCitations,
+            });
+            renderMessages();
+          }
           isLoading = false;
-          renderMessages();
           return;
         }
 
         try {
           const payload = JSON.parse(raw);
-          if (payload.type === "delta" && payload.delta) {
-            isLoading = false; // Hide typing indicator once tokens start arriving
-            messages[agentMsgIndex].text += payload.delta;
-            renderMessages();
-          } else if (payload.type === "citations" && Array.isArray(payload.citations)) {
-            messages[agentMsgIndex].citations = payload.citations;
-            renderMessages();
-          } else if (payload.type === "done" && payload.message) {
-            messages[agentMsgIndex].text = payload.message;
-            if (payload.citations) messages[agentMsgIndex].citations = payload.citations;
-            renderMessages();
+          if (payload.type === "citations" && Array.isArray(payload.citations)) {
+            renderActiveCitations(payload.citations);
+          } else if (payload.type === "delta" && payload.delta) {
+            // Reveal bubble, hide thinking box
+            if (thinkingBox.style.display !== "none") {
+              thinkingBox.style.display = "none";
+              streamingBubble.style.display = "block";
+            }
+            activeText += payload.delta;
+            streamingBubble.textContent = activeText;
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          } else if (payload.type === "done") {
+            if (payload.message) {
+              activeText = payload.message;
+              streamingBubble.textContent = activeText;
+            }
+            if (payload.citations) {
+              renderActiveCitations(payload.citations);
+            }
+            if (!isCommitted) {
+              isCommitted = true;
+              messages.push({
+                sender: "agent",
+                text: activeText || "No response generated.",
+                citations: activeCitations,
+              });
+              renderMessages();
+            }
+            isLoading = false;
           } else if (payload.type === "error" && payload.error) {
-            messages[agentMsgIndex].text += `\n[Error: ${payload.error}]`;
-            renderMessages();
+            if (thinkingBox.style.display !== "none") {
+              thinkingBox.style.display = "none";
+              streamingBubble.style.display = "block";
+            }
+            activeText += `\n[Error: ${payload.error}]`;
+            streamingBubble.textContent = activeText;
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
           }
         } catch (e) {
           console.error("Simple AI SSE Parse Error:", e);
@@ -755,15 +959,39 @@
           eventSource = null;
         }
         isLoading = false;
-        if (!messages[agentMsgIndex].text) {
-          messages[agentMsgIndex].text = "Connection lost. Please try again.";
+        if (thinkingBox.style.display !== "none") {
+          thinkingBox.style.display = "none";
+          streamingBubble.style.display = "block";
         }
-        renderMessages();
+        if (!activeText) {
+          activeText = "Connection lost. Please try again.";
+          streamingBubble.textContent = activeText;
+        }
+        if (!isCommitted) {
+          isCommitted = true;
+          messages.push({
+            sender: "agent",
+            text: activeText,
+            citations: activeCitations,
+          });
+        }
       };
     } catch (err) {
       isLoading = false;
-      messages[agentMsgIndex].text = `Error: ${err.message}`;
-      renderMessages();
+      if (thinkingBox.style.display !== "none") {
+        thinkingBox.style.display = "none";
+        streamingBubble.style.display = "block";
+      }
+      activeText = `Error: ${err.message}`;
+      streamingBubble.textContent = activeText;
+      if (!isCommitted) {
+        isCommitted = true;
+        messages.push({
+          sender: "agent",
+          text: activeText,
+          citations: activeCitations,
+        });
+      }
     }
   }
 

@@ -1,0 +1,22 @@
+[
+  {
+    "question": "What is Simple AI and what architecture does it use?",
+    "ground_truth": "Simple AI is an enterprise knowledge engine built with FastAPI, PostgreSQL with pgvector, and Google Gemini. It follows a clean Controller-Service-Repository pattern."
+  },
+  {
+    "question": "How are documents processed and vectorized in Simple AI?",
+    "ground_truth": "Documents are uploaded via ETService, text is extracted and chunked into overlapping segments, embedded using 768-dimensional vector models, and indexed in PostgreSQL using pgvector HNSW cosine distance indexes."
+  },
+  {
+    "question": "How is multi-tenancy enforced across documents and chat widgets?",
+    "ground_truth": "Documents and agents are partitioned by user_id and tenant boundaries. Vector similarity search filters by user_id to ensure strict multi-tenant isolation."
+  },
+  {
+    "question": "What streaming mechanisms are supported by Simple AI?",
+    "ground_truth": "Simple AI supports both single-route direct Server-Sent Events (SSE) streaming and the Two-Route session streaming pattern via native browser EventSource."
+  },
+  {
+    "question": "What security controls and headers are configured?",
+    "ground_truth": "Simple AI enforces RFC 6797 HTTP Strict Transport Security (HSTS), TLS enforcement, JWT authorization tokens, and CORS origin controls."
+  }
+]
