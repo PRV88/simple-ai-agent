@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
 
 
 # ==========================================
@@ -8,11 +9,22 @@ from pydantic import BaseModel, EmailStr, Field
 # ==========================================
 
 class UserRegisterRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, description="Username for admin")
+    username: str = Field(..., min_length=3, max_length=50, description="Username for user")
     email: EmailStr = Field(..., description="Valid email address")
-    password: str = Field(..., min_length=6, description="Password (at least 6 characters)")
-    full_name: Optional[str] = Field(None, max_length=100, description="Full name of admin")
-    role: str = Field("admin", description="Role (defaults to admin)")
+    password: str = Field(..., min_length=8, max_length=128, description="Password (at least 8 characters)")
+    full_name: Optional[str] = Field(None, max_length=100, description="Full name")
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_complexity(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters long.")
+        has_letter = any(c.isalpha() for c in v)
+        has_digit_or_special = any(c.isdigit() or not c.isalnum() for c in v)
+        if not (has_letter and has_digit_or_special):
+            raise ValueError("Password must contain both letters and at least one number or special character.")
+        return v
+
 
 
 class UserLoginRequest(BaseModel):

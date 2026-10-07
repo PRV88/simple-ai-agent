@@ -12,14 +12,25 @@ class UserRepository:
     """Repository handling all database operations for users using SQLAlchemy 2.0 ORM."""
 
     async def find_by_username_or_email(self, identifier: str) -> Optional[Dict[str, Any]]:
-        """Retrieves user by username or email using SQLAlchemy select()."""
+        """Retrieves user by username or email using SQLAlchemy select(). Excludes sensitive credentials."""
         async with get_db() as session:
             stmt = select(UserModel).where(
                 or_(UserModel.username == identifier, UserModel.email == identifier)
             )
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()
-            return user.to_dict() if user else None
+            return user.to_dict(include_sensitive=False) if user else None
+
+    async def find_credentials_by_identifier(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """Retrieves user with password_hash strictly for authentication verification."""
+        async with get_db() as session:
+            stmt = select(UserModel).where(
+                or_(UserModel.username == identifier, UserModel.email == identifier)
+            )
+            result = await session.execute(stmt)
+            user = result.scalar_one_or_none()
+            return user.to_dict(include_sensitive=True) if user else None
+
 
     async def find_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Retrieves user by primary key ID using SQLAlchemy session.get()."""

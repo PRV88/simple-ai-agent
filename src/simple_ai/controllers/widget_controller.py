@@ -4,10 +4,11 @@ import logging
 import time
 import uuid
 from typing import Dict, Optional, Tuple
-from fastapi import APIRouter, Body, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pathlib import Path
 from fastapi.responses import FileResponse, StreamingResponse
 
+from simple_ai.middlewares import chat_rate_limiter
 from simple_ai.models import WidgetChatRequest, WidgetConfigResponse
 from simple_ai.repositories.agent_repository import agent_repository
 from simple_ai.services.rag_service import rag_service
@@ -100,6 +101,7 @@ async def get_widget_config(
 @router.post(
     "/chat",
     summary="Route 1 (Widget): Initialize or directly stream chat for visitor session",
+    dependencies=[Depends(chat_rate_limiter)],
 )
 async def widget_chat(
     request: WidgetChatRequest,
@@ -204,6 +206,7 @@ async def widget_chat(
 @router.get(
     "/chat/stream",
     summary="Native EventSource Direct SSE stream for Widget",
+    dependencies=[Depends(chat_rate_limiter)],
 )
 async def widget_chat_stream_get(
     agent_id: str = Query(..., description="Target Agent ID"),

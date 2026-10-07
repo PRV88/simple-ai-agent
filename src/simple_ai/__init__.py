@@ -37,12 +37,12 @@ register_exception_handlers(app)
 # 2. Request Transport Security (HSTS, TLS/HTTPS Enforcement, Transport Security Headers)
 app.add_middleware(RequestTransportSecurityMiddleware)
 
-# 3. CORS Middleware (allows external websites to embed widget)
+# 3. CORS Middleware (Restricts origins based on environment settings)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
+    allow_origins=settings.cors_origins,
+    allow_credentials=True if not settings.is_development else False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

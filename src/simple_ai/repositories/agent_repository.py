@@ -3,6 +3,7 @@ import uuid
 from typing import Any, Dict, Optional
 from sqlalchemy import select
 
+from simple_ai.config import settings
 from simple_ai.database import get_db
 from simple_ai.models.db_models import AgentModel
 
@@ -48,10 +49,11 @@ class AgentRepository:
             return agent.to_dict()
 
     async def get_by_id(self, agent_id: str) -> Optional[Dict[str, Any]]:
-        """Fetches agent by primary key ID, with fallback for default/demo placeholders."""
+        """Fetches agent by primary key ID with strict tenant boundary enforcement."""
         async with get_db() as session:
             agent = await session.get(AgentModel, agent_id)
-            if not agent and agent_id in ("default", "YOUR_AGENT_ID", "default_agent", "demo"):
+            # Permitted only in local development for developer convenience
+            if not agent and agent_id in ("default", "YOUR_AGENT_ID", "default_agent", "demo") and settings.is_development:
                 stmt = (
                     select(AgentModel)
                     .where(AgentModel.is_deployed == True)
@@ -61,6 +63,7 @@ class AgentRepository:
                 res = await session.execute(stmt)
                 agent = res.scalar_one_or_none()
             return agent.to_dict() if agent else None
+
 
     async def update_agent(
         self, agent_id: str, user_id: int, updates: Dict[str, Any]

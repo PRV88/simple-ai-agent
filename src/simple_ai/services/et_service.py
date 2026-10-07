@@ -47,6 +47,11 @@ class ETService:
         if lower_name.endswith(".pdf"):
             try:
                 reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+                MAX_PAGES = 200
+                if len(reader.pages) > MAX_PAGES:
+                    raise ValidationException(
+                        f"PDF exceeds the maximum supported limit of {MAX_PAGES} pages (contains {len(reader.pages)} pages)."
+                    )
                 for page_num, page in enumerate(reader.pages, start=1):
                     page_text = page.extract_text() or ""
                     cleaned = page_text.strip()
@@ -54,6 +59,8 @@ class ETService:
                         extracted_segments.append(
                             (cleaned, {"page_number": page_num, "source": filename})
                         )
+            except ValidationException:
+                raise
             except Exception as e:
                 logger.error(f"Error reading PDF {filename}: {e}")
                 raise ValidationException(f"Failed to parse PDF file: {str(e)}")

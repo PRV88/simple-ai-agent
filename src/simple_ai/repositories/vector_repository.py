@@ -63,11 +63,12 @@ class VectorRepository:
             )
 
             if user_id is not None:
-                stmt = stmt.where(
-                    (DocumentModel.user_id == user_id) | (DocumentModel.user_id.is_(None))
-                )
+                stmt = stmt.where(DocumentModel.user_id == user_id)
             elif uploaded_by:
                 stmt = stmt.where(DocumentModel.uploaded_by == uploaded_by)
+            else:
+                # If no tenant identifier is provided, strictly block global leakage
+                return []
 
             stmt = stmt.order_by(distance_expr.asc()).limit(top_k)
 
@@ -95,9 +96,7 @@ class VectorRepository:
                 stmt = (
                     select(func.count(DocumentChunkModel.id))
                     .join(DocumentModel, DocumentChunkModel.doc_id == DocumentModel.id)
-                    .where(
-                        (DocumentModel.user_id == user_id) | (DocumentModel.user_id.is_(None))
-                    )
+                    .where(DocumentModel.user_id == user_id)
                 )
             else:
                 stmt = select(func.count(DocumentChunkModel.id))

@@ -2,6 +2,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 
+from simple_ai.middlewares import auth_login_limiter, auth_register_limiter
 from simple_ai.models import (
     TokenResponse,
     UserLoginRequest,
@@ -20,16 +21,17 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     "/register",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Register a new Admin / User",
+    summary="Register a new User (First user bootstraps as Admin)",
+    dependencies=[Depends(auth_register_limiter)],
 )
 async def register(request: UserRegisterRequest):
-    """Controller: Registers user via AuthService."""
+    """Controller: Registers user via AuthService with privilege escalation protection."""
     new_user = await auth_service.register_user(
         username=request.username,
         email=request.email,
         password=request.password,
         full_name=request.full_name,
-        role=request.role,
+        role=None,
     )
     return new_user
 
@@ -38,6 +40,7 @@ async def register(request: UserRegisterRequest):
     "/login",
     response_model=TokenResponse,
     summary="Login to obtain JWT access token",
+    dependencies=[Depends(auth_login_limiter)],
 )
 async def login(request: UserLoginRequest):
     """Controller: Authenticates user credentials via AuthService."""
@@ -53,6 +56,7 @@ async def login(request: UserLoginRequest):
     response_model=TokenResponse,
     include_in_schema=False,
     summary="OAuth2 compatible token endpoint",
+    dependencies=[Depends(auth_login_limiter)],
 )
 async def oauth2_token(form_data: OAuth2PasswordRequestForm = Depends()):
     """Controller: Supports OAuth2 password grant form."""

@@ -46,17 +46,19 @@ class UserModel(Base):
         "AgentModel", back_populates="user", uselist=False, cascade="all, delete-orphan", lazy="selectin"
     )
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
+    def to_dict(self, include_sensitive: bool = False) -> Dict[str, Any]:
+        data = {
             "id": self.id,
             "username": self.username,
             "email": self.email,
-            "password_hash": self.password_hash,
             "full_name": self.full_name,
             "role": self.role,
             "is_active": self.is_active,
             "created_at": self.created_at,
         }
+        if include_sensitive:
+            data["password_hash"] = self.password_hash
+        return data
 
 
 class DocumentModel(Base):

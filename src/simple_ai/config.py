@@ -133,8 +133,33 @@ class Settings:
         "http://localhost:3000" if APP_ENV == "development" else "https://app.simple-ai.dev",
     )
 
+    DEFAULT_FALLBACK_JWT_SECRET: str = "simple-ai-fallback-secret-key-32bytes-min"
+
+    def validate_security(self) -> None:
+        """Enforces critical cryptographic and transport security rules."""
+        import logging
+        cfg_logger = logging.getLogger("simple_ai.config")
+
+        if self.is_production or self.is_staging:
+            if not self.JWT_SECRET_KEY or self.JWT_SECRET_KEY == self.DEFAULT_FALLBACK_JWT_SECRET:
+                raise RuntimeError(
+                    f"CRITICAL SECURITY CONFIGURATION ERROR: A strong, unique JWT_SECRET_KEY must be provided in {self.APP_ENV} mode! "
+                    "Cannot use default static fallback key. Generate with `openssl rand -hex 32`."
+                )
+            if len(self.JWT_SECRET_KEY) < 32:
+                raise RuntimeError(
+                    f"CRITICAL SECURITY CONFIGURATION ERROR: JWT_SECRET_KEY must be at least 32 characters in {self.APP_ENV}."
+                )
+        elif self.JWT_SECRET_KEY == self.DEFAULT_FALLBACK_JWT_SECRET:
+            cfg_logger.warning(
+                "SECURITY WARNING: Using default static JWT_SECRET_KEY in development. "
+                "Ensure a secure 32+ character random secret is set for staging and production."
+            )
+
 
 settings = Settings()
+settings.validate_security()
+
 
 # Backward-compatible direct exports
 API_KEY = settings.API_KEY

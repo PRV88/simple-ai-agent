@@ -56,18 +56,24 @@ class DocumentRepository:
     async def find_by_id(
         self, doc_id: str, user_id: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
-        """Finds document by primary key ID and verifies ownership."""
+        """Finds document by primary key ID and strictly verifies ownership."""
         async with get_db() as session:
             doc = await session.get(DocumentModel, doc_id)
             if not doc:
                 return None
-            if user_id is not None and doc.user_id is not None and doc.user_id != user_id:
+            if user_id is not None and doc.user_id != user_id:
                 return None
             return doc.to_dict()
 
-    async def get_chunks_by_doc_id(self, doc_id: str) -> List[Dict[str, Any]]:
-        """Fetches all chunk texts and metadata for a document."""
+    async def get_chunks_by_doc_id(
+        self, doc_id: str, user_id: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """Fetches all chunk texts and metadata for a document scoped to owner."""
         async with get_db() as session:
+            if user_id is not None:
+                doc = await session.get(DocumentModel, doc_id)
+                if not doc or doc.user_id != user_id:
+                    return []
             stmt = (
                 select(DocumentChunkModel)
                 .where(DocumentChunkModel.doc_id == doc_id)
@@ -81,14 +87,14 @@ class DocumentRepository:
         self, doc_id: str, user_id: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Deletes a document with optional user ownership check.
+        Deletes a document with strict user ownership check.
         SQLAlchemy ORM relationship cascade automatically deletes associated vector chunks.
         """
         async with get_db() as session:
             doc = await session.get(DocumentModel, doc_id)
             if not doc:
                 return None
-            if user_id is not None and doc.user_id is not None and doc.user_id != user_id:
+            if user_id is not None and doc.user_id != user_id:
                 return None
             info = {"id": doc.id, "filename": doc.filename}
             await session.delete(doc)

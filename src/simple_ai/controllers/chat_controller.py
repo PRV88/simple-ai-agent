@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional, Tuple
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
+from simple_ai.middlewares import chat_rate_limiter
 from simple_ai.models import ChatRequest
 from simple_ai.repositories.agent_repository import agent_repository
 from simple_ai.services.auth_service import get_current_user_optional
@@ -49,7 +50,7 @@ def home():
 # ==============================================================================
 # ROUTE 1: POST /chat (Session Creation / Query Dispatch)
 # ==============================================================================
-@router.post("/chat")
+@router.post("/chat", dependencies=[Depends(chat_rate_limiter)])
 async def chat(
     request: Optional[ChatRequest] = Body(default=None),
     query: Optional[str] = Query(default=None, description="Query string if passed as URL parameter"),

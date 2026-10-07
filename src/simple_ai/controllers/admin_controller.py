@@ -46,8 +46,13 @@ async def upload_document(
     current_admin: Dict[str, Any] = Depends(get_current_admin),
 ):
     """Controller: Extracts file data and delegates ingestion pipeline to ETService scoped to admin."""
+    import os
     if not file.filename:
         raise ValidationException("Uploaded file must have a filename.")
+
+    clean_filename = os.path.basename(file.filename.strip()).replace("\x00", "")
+    if not clean_filename:
+        raise ValidationException("Uploaded file must have a valid filename.")
 
     custom_meta = {}
     if metadata_json:
@@ -56,12 +61,30 @@ async def upload_document(
         except Exception:
             raise ValidationException("metadata_json must be valid JSON format.")
 
-    content_bytes = await file.read()
-    if not content_bytes:
+    # Guard against memory exhaustion: Stream chunks up to 25MB max
+    MAX_UPLOAD_SIZE = 25 * 1024 * 1024  # 25 MB
+    chunks = []
+    total_bytes = 0
+    read_chunk_size = 1024 * 1024  # 1 MB
+
+    while True:
+        chunk = await file.read(read_chunk_size)
+        if not chunk:
+            break
+        total_bytes += len(chunk)
+        if total_bytes > MAX_UPLOAD_SIZE:
+            raise ValidationException(
+                f"Uploaded file exceeds maximum allowed limit of {MAX_UPLOAD_SIZE // (1024 * 1024)}MB."
+            )
+        chunks.append(chunk)
+
+    if not chunks or total_bytes == 0:
         raise ValidationException("Uploaded file is empty.")
 
+    content_bytes = b"".join(chunks)
+
     doc_id, total_chunks = await et_service.ingest_document(
-        filename=file.filename,
+        filename=clean_filename,
         file_bytes=content_bytes,
         uploaded_by=current_admin["username"],
         user_id=current_admin["id"],
@@ -70,11 +93,11 @@ async def upload_document(
 
     return IngestionResponse(
         success=True,
-        message=f"Document '{file.filename}' processed and stored in pgvector.",
+        message=f"Document '{clean_filename}' processed and stored in pgvector.",
         doc_id=doc_id,
-        filename=file.filename,
+        filename=clean_filename,
         total_chunks=total_chunks,
-        file_size=len(content_bytes),
+        file_size=total_bytes,
     )
 
 

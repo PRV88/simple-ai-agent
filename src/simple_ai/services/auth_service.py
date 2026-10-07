@@ -76,9 +76,9 @@ class AuthService:
         email: str,
         password: str,
         full_name: Optional[str] = None,
-        role: str = "admin",
+        role: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Validates uniqueness and registers a new user."""
+        """Validates uniqueness and registers a new user with secure role assignment."""
         existing = await self.user_repo.find_by_username_or_email(username)
         if existing and existing["username"] == username:
             raise ConflictException(f"Username '{username}' is already registered.")
@@ -87,32 +87,44 @@ class AuthService:
         if existing_email and existing_email["email"] == email:
             raise ConflictException(f"Email '{email}' is already registered.")
 
+        # Initial bootstrap user becomes admin; subsequent registrations default to user
+        total_users = await self.user_repo.count_users()
+        assigned_role = "user"
+        if total_users == 0:
+            assigned_role = "admin"
+        elif role and role in ("admin", "user"):
+            assigned_role = role
+
         pwd_hash = self.hash_password(password)
         new_user = await self.user_repo.create_user(
             username=username,
             email=email,
             password_hash=pwd_hash,
             full_name=full_name,
-            role=role,
+            role=assigned_role,
         )
-        logger.info(f"Registered user '{username}' (Role: {role}).")
+        logger.info(f"Registered user '{username}' (Role: {assigned_role}).")
         return new_user
 
     async def authenticate_user(self, username_or_email: str, password: str) -> Dict[str, Any]:
-        """Validates credentials and returns access token and user info."""
-        user = await self.user_repo.find_by_username_or_email(username_or_email)
-        if not user or not self.verify_password(password, user["password_hash"]):
+        """Validates credentials and returns access token and sanitized user info."""
+        user = await self.user_repo.find_credentials_by_identifier(username_or_email)
+        if not user or not self.verify_password(password, user.get("password_hash", "")):
             raise UnauthorizedException("Incorrect username/email or password.")
 
         if not user.get("is_active", True):
             raise ForbiddenException("User account is inactive. Please contact system administrator.")
 
-        token = self.create_access_token(data={"sub": user["username"], "role": user["role"]})
+        # Strip sensitive credentials from memory dict
+        safe_user = {k: v for k, v in user.items() if k != "password_hash"}
+
+        token = self.create_access_token(data={"sub": safe_user["username"], "role": safe_user["role"]})
         return {
             "access_token": token,
             "token_type": "bearer",
-            "user": user,
+            "user": safe_user,
         }
+
 
     async def get_user_by_token(self, token: str) -> Dict[str, Any]:
         """Validates token payload and fetches user from DB."""
