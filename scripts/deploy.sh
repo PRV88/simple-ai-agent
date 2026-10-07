@@ -216,7 +216,15 @@ deploy_cloud() {
 
     # 4. Deploy Frontend Web App to Vercel
     log_info "Deploying Next.js Frontend to Vercel (simple-ai-agent-frontend)..."
-    (cd "${ROOT_DIR}/frontend" && npx vercel --prod --yes)
+    local fe_output
+    fe_output=$(cd "${ROOT_DIR}/frontend" && npx vercel --prod --yes 2>&1)
+    echo "${fe_output}"
+    local fe_deploy_url
+    fe_deploy_url=$(echo "${fe_output}" | grep -o 'https://simple-ai-agent-frontend-[^ ]*\.vercel\.app' | head -n 1)
+    if [ -n "${fe_deploy_url}" ]; then
+        log_info "Ensuring production alias: ${fe_deploy_url} -> simple-ai-agent-frontend.vercel.app..."
+        (cd "${ROOT_DIR}/frontend" && npx vercel alias set "${fe_deploy_url}" simple-ai-agent-frontend.vercel.app >/dev/null 2>&1 || true)
+    fi
 
     # 5. Post-deploy health verification
     log_info "Verifying live cloud endpoints..."
