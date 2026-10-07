@@ -1,6 +1,5 @@
 import logging
 from typing import Any, Dict, List, Optional
-from datasets import Dataset
 from openai import OpenAI
 
 from simple_ai.config import API_KEY, BASE_URL, EMBEDDING_MODEL, MODEL
@@ -9,6 +8,7 @@ from simple_ai.services.rag_service import rag_service
 logger = logging.getLogger("simple_ai.services.ragas")
 
 try:
+    from datasets import Dataset
     from ragas import evaluate
     from ragas.embeddings.base import BaseRagasEmbeddings
     from ragas.llms import llm_factory
@@ -20,9 +20,10 @@ try:
     )
     RAGAS_AVAILABLE = True
 except Exception as e:
-    logger.warning(f"Ragas library import failed: {e}")
+    logger.warning(f"Ragas evaluation libraries not loaded in serverless runtime: {e}")
     RAGAS_AVAILABLE = False
     BaseRagasEmbeddings = object
+    Dataset = object
 
 
 class GeminiRagasEmbeddings(BaseRagasEmbeddings):
