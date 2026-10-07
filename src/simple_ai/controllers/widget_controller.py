@@ -26,13 +26,15 @@ WIDGET_JS_LOCATIONS = [
 ]
 
 
-@router.get(
+@router.api_route(
     "/chat-widget.js",
+    methods=["GET", "HEAD"],
     summary="Serve universal embeddable chat widget script",
     include_in_schema=True,
 )
-@router.get(
+@router.api_route(
     "/widget.js",
+    methods=["GET", "HEAD"],
     summary="Serve universal embeddable chat widget script (alias)",
     include_in_schema=False,
 )
