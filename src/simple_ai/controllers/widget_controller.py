@@ -5,7 +5,8 @@ import time
 import uuid
 from typing import Dict, Optional, Tuple
 from fastapi import APIRouter, Body, HTTPException, Query, status
-from fastapi.responses import StreamingResponse
+from pathlib import Path
+from fastapi.responses import FileResponse, StreamingResponse
 
 from simple_ai.models import WidgetChatRequest, WidgetConfigResponse
 from simple_ai.repositories.agent_repository import agent_repository
@@ -18,6 +19,36 @@ router = APIRouter(prefix="/widget", tags=["Public Chat Widget"])
 # Session registry for widget chats: session_id -> (queue, created_at)
 SessionEntry = Tuple[asyncio.Queue, float]
 widget_sessions: Dict[str, SessionEntry] = {}
+
+WIDGET_JS_LOCATIONS = [
+    Path(__file__).resolve().parent.parent / "static" / "widget" / "chat-widget.js",
+    Path(__file__).resolve().parent.parent.parent.parent / "frontend" / "public" / "widget" / "chat-widget.js",
+]
+
+
+@router.get(
+    "/chat-widget.js",
+    summary="Serve universal embeddable chat widget script",
+    include_in_schema=True,
+)
+@router.get(
+    "/widget.js",
+    summary="Serve universal embeddable chat widget script (alias)",
+    include_in_schema=False,
+)
+async def get_widget_script():
+    """Serves the isolated vanilla JS widget script for client website embedding."""
+    for p in WIDGET_JS_LOCATIONS:
+        if p.exists() and p.is_file():
+            return FileResponse(
+                path=str(p),
+                media_type="application/javascript; charset=utf-8",
+                headers={
+                    "Cache-Control": "public, max-age=3600",
+                    "Access-Control-Allow-Origin": "*",
+                },
+            )
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="chat-widget.js bundle not found.")
 
 
 def cleanup_stale_widget_sessions(ttl_seconds: float = 300.0) -> None:
