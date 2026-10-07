@@ -53,6 +53,12 @@ jobs:
         run: uv sync --frozen
 
       - name: Run Python Syntax & Import Integrity Checks
+        env:
+          APP_ENV: testing
+          GEMINI_API_KEY: "test-gemini-api-key-for-ci"
+          DATABASE_URL: "postgresql://postgres:testpassword@localhost:5432/simple_ai_test"
+          VECTOR_DATABASE_URL: "postgresql://postgres:testpassword@localhost:5432/simple_ai_test"
+          JWT_SECRET_KEY: "test-secret-key-32bytes-for-ci-testing"
         run: |
           uv run python -c "import simple_ai; print('Backend loaded successfully')"
 

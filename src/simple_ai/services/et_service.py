@@ -29,7 +29,7 @@ class ETService:
 
     def __init__(self):
         self.embedding_client = AsyncOpenAI(
-            api_key=API_KEY,
+            api_key=API_KEY or "dummy-api-key-for-test-environments",
             base_url=BASE_URL,
         )
         self.doc_repo = document_repository

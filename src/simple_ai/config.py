@@ -68,7 +68,11 @@ class Settings:
         return "/redoc"
 
     # LLM & Embedding Settings
-    API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    API_KEY: str = (
+        os.getenv("GEMINI_API_KEY")
+        or os.getenv("OPENAI_API_KEY")
+        or "dummy-api-key-for-test-environments"
+    )
     BASE_URL: str = os.getenv("BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
     MODEL: str = os.getenv("MODEL", "gemini-2.5-flash")
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "gemini-embedding-001")

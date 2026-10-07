@@ -6,7 +6,7 @@ from agents import set_default_openai_api
 set_default_openai_api("chat_completions")
 
 gemini_client = AsyncOpenAI(
-    api_key=API_KEY,
+    api_key=API_KEY or "dummy-api-key-for-test-environments",
     base_url=BASE_URL,
 )
 

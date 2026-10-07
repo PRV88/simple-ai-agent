@@ -31,7 +31,10 @@ class GeminiRagasEmbeddings(BaseRagasEmbeddings):
 
     def __init__(self):
         super().__init__()
-        self.client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+        self.client = OpenAI(
+            api_key=API_KEY or "dummy-api-key-for-test-environments",
+            base_url=BASE_URL,
+        )
         self.model = EMBEDDING_MODEL
 
     def embed_query(self, text: str) -> List[float]:
@@ -72,7 +75,10 @@ class RagasService:
 
     def _get_evaluator_llm(self):
         if self._llm is None:
-            client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+            client = OpenAI(
+                api_key=API_KEY or "dummy-api-key-for-test-environments",
+                base_url=BASE_URL,
+            )
             self._llm = llm_factory(MODEL, client=client)
             if hasattr(self._llm, "model_args") and isinstance(self._llm.model_args, dict):
                 self._llm.model_args["max_tokens"] = 4096
