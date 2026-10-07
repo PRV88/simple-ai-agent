@@ -175,10 +175,10 @@ deploy_local_stack() {
     local backend_pid=$!
     log_success "Backend started (PID: ${backend_pid}). Logs: /tmp/simple_ai_backend.log"
 
-    log_info "Building and starting Next.js frontend in background..."
+    log_info "Building and starting Next.js frontend in background (Local Dev mode)..."
     cd "${ROOT_DIR}/frontend"
-    npm run build > /dev/null 2>&1
-    npm run start > /tmp/simple_ai_frontend.log 2>&1 &
+    npm run build:dev > /dev/null 2>&1
+    npm run start:dev > /tmp/simple_ai_frontend.log 2>&1 &
     local frontend_pid=$!
     log_success "Frontend started (PID: ${frontend_pid}). Logs: /tmp/simple_ai_frontend.log"
 
@@ -210,31 +210,43 @@ deploy_cloud() {
     log_info "Pushing latest commits to GitHub origin/main..."
     git push origin main || log_warn "Git push skipped or already up to date."
 
-    # 3. Deploy to Vercel
-    log_info "Executing Vercel CLI production deployment..."
+    # 3. Deploy Backend API to Vercel
+    log_info "Deploying FastAPI Backend to Vercel (simple-ai-agent)..."
     npx vercel --prod --yes
 
-    # 4. Post-deploy health verification
+    # 4. Deploy Frontend Web App to Vercel
+    log_info "Deploying Next.js Frontend to Vercel (simple-ai-agent-frontend)..."
+    (cd "${ROOT_DIR}/frontend" && npx vercel --prod --yes)
+
+    # 5. Post-deploy health verification
     log_info "Verifying live cloud endpoints..."
     sleep 3
-    local live_url="https://simple-ai-agent-six.vercel.app"
+    local api_url="https://simple-ai-agent-six.vercel.app"
+    local fe_url="https://simple-ai-agent-frontend.vercel.app"
     
-    if curl -s -f "${live_url}/" > /dev/null 2>&1; then
-        log_success "Root API is live at ${live_url}/"
+    if curl -s -f "${api_url}/" > /dev/null 2>&1; then
+        log_success "Backend API is live at ${api_url}/"
     else
-        log_warn "Root API ping returned non-200, checking logs..."
+        log_warn "Backend API ping returned non-200, checking logs..."
     fi
 
-    if curl -s -f -I "${live_url}/widget/chat-widget.js" > /dev/null 2>&1; then
-        log_success "Universal Embeddable Widget is live at ${live_url}/widget/chat-widget.js"
+    if curl -s -f "${fe_url}/" > /dev/null 2>&1; then
+        log_success "Frontend UI is live at ${fe_url}/"
+    else
+        log_warn "Frontend UI ping returned non-200, checking logs..."
+    fi
+
+    if curl -s -f -I "${api_url}/widget/chat-widget.js" > /dev/null 2>&1; then
+        log_success "Universal Embeddable Widget is live at ${api_url}/widget/chat-widget.js"
     else
         log_warn "Widget script verification warning."
     fi
 
     echo ""
     log_success "Cloud deployment complete! 🎉"
-    echo -e "  • Web API:    ${BOLD}${live_url}/${NC}"
-    echo -e "  • Chat Widget: ${BOLD}${live_url}/widget/chat-widget.js${NC}"
+    echo -e "  • Web App UI:  ${BOLD}${fe_url}/${NC}"
+    echo -e "  • Backend API: ${BOLD}${api_url}/${NC}"
+    echo -e "  • Chat Widget: ${BOLD}${api_url}/widget/chat-widget.js${NC}"
 }
 
 # ------------------------------------------------------------------------------
@@ -309,6 +321,12 @@ check_status() {
         echo -e "  • Vercel API:         ${GREEN}ONLINE (https://simple-ai-agent-six.vercel.app)${NC}"
     else
         echo -e "  • Vercel API:         ${RED}UNREACHABLE${NC}"
+    fi
+
+    if curl -s -f https://simple-ai-agent-frontend.vercel.app/ > /dev/null 2>&1; then
+        echo -e "  • Frontend Web App:   ${GREEN}ONLINE (https://simple-ai-agent-frontend.vercel.app)${NC}"
+    else
+        echo -e "  • Frontend Web App:   ${RED}UNREACHABLE${NC}"
     fi
 
     if curl -s -I https://simple-ai-agent-six.vercel.app/widget/chat-widget.js > /dev/null 2>&1; then

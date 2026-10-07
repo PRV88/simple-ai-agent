@@ -11,6 +11,7 @@
     "build:stage": "dotenv -e .env.staging -- next build",
     "build:prod": "dotenv -e .env.production -- next build",
     "start": "dotenv -e .env.production -- next start",
+    "start:dev": "dotenv -e .env.development -- next start",
     "start:stage": "dotenv -e .env.staging -- next start -p 3001",
     "lint": "eslint"
   },
