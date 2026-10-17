@@ -15,10 +15,17 @@ from simple_ai.middlewares import RequestTransportSecurityMiddleware
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: ensure tables and pgvector extension are created
-    await init_db()
+    try:
+        await init_db()
+    except Exception as db_err:
+        import logging
+        logging.getLogger("simple_ai").warning(f"Database connection deferred on startup: {db_err}")
     yield
     # Shutdown: cleanly close database pool
-    await close_db_pool()
+    try:
+        await close_db_pool()
+    except Exception:
+        pass
 
 
 app = FastAPI(
