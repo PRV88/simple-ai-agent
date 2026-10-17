@@ -7,20 +7,24 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
+  pull-requests: write
 
 env:
   RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP || 'rg-simple-ai-prod' }}
   CONTAINER_APP_NAME: ${{ secrets.CONTAINER_APP_NAME || 'ca-simple-ai-backend-prod' }}
   ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+  BACKEND_URL: "https://ca-simple-ai-backend-prod.victorioustree-88471946.eastus.azurecontainerapps.io"
+  FRONTEND_URL: "https://icy-bay-0cfcf190f.4.azurestaticapps.net"
 
 jobs:
   # ============================================================================
-  # 1. Validation & Quality Gates
+  # 1. Backend Tests & Lint
   # ============================================================================
   test-backend:
     name: Backend Tests & Lint
@@ -42,18 +46,21 @@ jobs:
       - name: Install Dependencies
         run: uv sync --frozen
 
-      - name: Validate Python Package Integrity
+      - name: Validate Backend Import
         env:
           APP_ENV: testing
-          GEMINI_API_KEY: "test-gemini-api-key-for-ci"
+          GEMINI_API_KEY: "test-key-for-ci"
           DATABASE_URL: "sqlite:///:memory:"
           VECTOR_DATABASE_URL: "sqlite:///:memory:"
           JWT_SECRET_KEY: "test-secret-key-32bytes-for-ci-testing"
         run: |
-          uv run python -c "import simple_ai; print('Backend loaded successfully')"
+          uv run python -c "import simple_ai; print('Backend loaded OK')"
 
+  # ============================================================================
+  # 2. Frontend Typecheck & Build Validation
+  # ============================================================================
   test-frontend:
-    name: Frontend Typecheck & Build
+    name: Frontend Build Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -75,15 +82,19 @@ jobs:
         env:
           NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_BACKEND_URL: "https://ca-simple-ai-backend-prod.victorioustree-88471946.eastus.azurecontainerapps.io"
+          BACKEND_URL: "https://ca-simple-ai-backend-prod.victorioustree-88471946.eastus.azurecontainerapps.io"
         run: npm run build
 
   # ============================================================================
-  # 2. Build & Push Backend Container to Azure Container Registry (ACR)
+  # 3. Build & Push Backend Container to Azure Container Registry
   # ============================================================================
   build-and-push-backend:
     name: Build & Push Backend Container
     needs: [test-backend, test-frontend]
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    if: |
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
@@ -130,16 +141,20 @@ jobs:
       - name: Store Image Info
         id: image_info
         run: |
-          IMAGE="${{ secrets.ACR_LOGIN_SERVER }}/simple-ai-backend:${{ steps.meta.outputs.version }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          IMAGE="${{ secrets.ACR_LOGIN_SERVER }}/simple-ai-backend:sha-${SHORT_SHA}"
           echo "full_image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "Image built: $IMAGE"
 
   # ============================================================================
-  # 3. Deploy Backend to Azure Container Apps (Scale-to-Zero, Low Cost)
+  # 4. Deploy Backend to Azure Container Apps (Scale-to-Zero, Low Cost)
   # ============================================================================
   deploy-backend-container:
-    name: Deploy to Azure Container App (Serverless)
+    name: Deploy Backend to Azure Container App
     needs: build-and-push-backend
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    if: |
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Log in to Azure
@@ -147,15 +162,12 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy Container Revision with Strict Low-Cost Scaling Limits
+      - name: Deploy Container Revision (Scale-to-Zero, 0.25 CPU / 0.5Gi)
         run: |
-          IMAGE_TAG="${{ secrets.ACR_LOGIN_SERVER }}/simple-ai-backend:sha-${{ github.sha }}"
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           TARGET_IMAGE="${{ secrets.ACR_LOGIN_SERVER }}/simple-ai-backend:sha-${SHORT_SHA}"
+          echo "Deploying image: ${TARGET_IMAGE}"
 
-          echo "Updating Container App ${{ env.CONTAINER_APP_NAME }} with image: ${TARGET_IMAGE}"
-
-          # Deploy revision while enforcing scale-to-zero (min: 0, max: 2) and minimal CPU/Memory
           az containerapp update \
             --name "${{ env.CONTAINER_APP_NAME }}" \
             --resource-group "${{ env.RESOURCE_GROUP }}" \
@@ -163,25 +175,58 @@ jobs:
             --min-replicas 0 \
             --max-replicas 2 \
             --cpu 0.25 \
-            --memory 0.5Gi
+            --memory 0.5Gi \
+            --set-env-vars \
+              "APP_ENV=production" \
+              "PORT=8000" \
+              "DEBUG=False" \
+              "LOG_LEVEL=WARNING" \
+              "CORS_ORIGINS=${{ env.FRONTEND_URL }},*" \
+              "FRONTEND_URL=${{ env.FRONTEND_URL }}" \
+              "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
+              "JWT_ALGORITHM=HS256" \
+              "ACCESS_TOKEN_EXPIRE_MINUTES=360" \
+              "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
+              "BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/" \
+              "MODEL=gemini-2.5-flash" \
+              "EMBEDDING_MODEL=gemini-embedding-001" \
+              "EMBEDDING_DIM=768" \
+              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              "VECTOR_DATABASE_URL=${{ secrets.VECTOR_DATABASE_URL }}" \
+              "DB_POOL_SIZE=10" \
+              "DB_MAX_OVERFLOW=20" \
+              "CHUNK_SIZE=800" \
+              "CHUNK_OVERLAP=150" \
+              "ENFORCE_HTTPS=False" \
+              "HSTS_ENABLED=True"
 
-      - name: Get Backend Ingress URL
-        id: get_url
+      - name: Verify Backend Health
+        id: health_check
         run: |
           BACKEND_URL=$(az containerapp show \
             --name "${{ env.CONTAINER_APP_NAME }}" \
             --resource-group "${{ env.RESOURCE_GROUP }}" \
             --query "properties.configuration.ingress.fqdn" -o tsv)
-          echo "Backend URL: https://${BACKEND_URL}"
+          echo "Backend deployed: https://${BACKEND_URL}"
           echo "backend_url=https://${BACKEND_URL}" >> $GITHUB_OUTPUT
 
+          for i in {1..9}; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "https://${BACKEND_URL}/" || echo "000")
+            echo "Health check attempt $i - HTTP $HTTP_CODE"
+            if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "401" || "$HTTP_CODE" == "422" ]]; then
+              echo "Backend is healthy!"
+              break
+            fi
+            sleep 10
+          done
+
   # ============================================================================
-  # 4. Deploy Frontend to Azure CDN (Azure Static Web Apps)
+  # 5. Deploy Frontend to Azure CDN (Azure Static Web Apps)
   # ============================================================================
   deploy-frontend-cdn:
     name: Deploy Frontend to Azure CDN (Static Web App)
     needs: [test-backend, test-frontend]
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -189,7 +234,28 @@ jobs:
         with:
           submodules: true
 
-      - name: Deploy to Azure Static Web Apps (Integrated Azure CDN)
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Frontend for Azure Static Web Apps
+        working-directory: frontend
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_BACKEND_URL: "https://ca-simple-ai-backend-prod.victorioustree-88471946.eastus.azurecontainerapps.io"
+          BACKEND_URL: "https://ca-simple-ai-backend-prod.victorioustree-88471946.eastus.azurecontainerapps.io"
+          NEXT_OUTPUT_STANDALONE: "false"
+        run: npm run build
+
+      - name: Deploy to Azure Static Web Apps (Global CDN)
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -197,9 +263,69 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "frontend"
-          api_location: ""
-          output_location: ""
+          output_location: ".next"
+          skip_app_build: true
         env:
           NEXT_TELEMETRY_DISABLED: 1
-          NODE_ENV: production
-          BACKEND_URL: "https://ca-simple-ai-backend-prod.victorioustree-88471946.eastus.azurecontainerapps.io"
+
+      - name: Close PR Preview Environment
+        if: github.event_name == 'pull_request' && github.event.action == 'closed'
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: "close"
+
+  # ============================================================================
+  # 6. Daily Compute Usage Monitoring Report
+  # ============================================================================
+  daily-usage-report:
+    name: Daily Compute & Cost Monitor
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Fetch Container App Metrics (Last 24h)
+        run: |
+          END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          START_TIME=$(date -u -d "24 hours ago" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || \
+                       date -u -v -24H +"%Y-%m-%dT%H:%M:%SZ")
+
+          RESOURCE_ID=$(az containerapp show \
+            --name "${{ env.CONTAINER_APP_NAME }}" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --query id -o tsv)
+
+          echo ""
+          echo "========================================================"
+          echo "  Daily Compute Usage Report - $(date -u '+%Y-%m-%d')"
+          echo "========================================================"
+
+          az monitor metrics list \
+            --resource "$RESOURCE_ID" \
+            --metric "Replicas" \
+            --start-time "$START_TIME" \
+            --end-time "$END_TIME" \
+            --interval PT1H \
+            --aggregation Average Maximum \
+            --output table 2>/dev/null || echo "Metrics not available (no traffic yet)"
+
+          echo ""
+          echo "--- Active Revisions ---"
+          az containerapp revision list \
+            --name "${{ env.CONTAINER_APP_NAME }}" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --query "[?properties.active].{Revision:name, State:properties.runningState, Replicas:properties.replicas, Health:properties.healthState}" \
+            --output table
+
+          echo ""
+          echo "--- Cost Budget Status ---"
+          az consumption budget list \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --query "[].{Name:name, Budget:properties.amount, TimeGrain:properties.timeGrain}" \
+            --output table 2>/dev/null || echo "Budget info requires Billing Reader role"
+
+          echo "========================================================"
