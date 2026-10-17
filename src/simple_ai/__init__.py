@@ -53,6 +53,13 @@ app.include_router(chat_router)
 app.include_router(widget_router)
 
 
+@app.get("/", tags=["Health"])
+@app.get("/health", tags=["Health"])
+def health_check():
+    """Health check endpoint for container orchestrators and probes."""
+    return {"status": "ok", "service": "simple-ai", "environment": settings.APP_ENV}
+
+
 @app.get("/admin", include_in_schema=False)
 @app.get("/admin-dashboard", include_in_schema=False)
 def redirect_to_frontend():
