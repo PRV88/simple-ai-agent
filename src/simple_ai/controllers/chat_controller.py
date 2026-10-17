@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import time
 import uuid
 from typing import Any, Dict, Optional, Tuple
@@ -43,7 +44,7 @@ def home():
         "architecture": "Controller-Service-Repository Pattern",
         "vector_backend": "PostgreSQL + pgvector",
         "docs_url": "/docs",
-        "frontend_url": "http://localhost:3000",
+        "frontend_url": os.getenv("FRONTEND_URL", "http://localhost:3000"),
     }
 
 
